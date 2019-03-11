@@ -1,13 +1,14 @@
 import heapq
+# import time
 
 
 # Cell Class (points on grid)
 class Cell:
-    def __init__(self, x, y, value):
+    def __init__(self, x, y, accessible):
         self.x = x
         self.y = y
 
-        self.value = value
+        self.accessible = accessible
         self.previous = None
 
         # G and H used for A* calculations, cost to move, G actual cost, H estimates
@@ -23,8 +24,8 @@ class Cell:
 # Main class for solving maze
 class PathFinder:
     def __init__(self, file):
-        self.x_len = 0
-        self.y_len = 0
+        self.width = 0
+        self.height = 0
 
         self.pending = []
         heapq.heapify(self.pending)
@@ -32,39 +33,49 @@ class PathFinder:
 
         self.start = None
         self.goal = None
+
         self.maze = []
         self.cells = []
+
         self.file = file
 
         self.read_file()
-        if self.find_endpoints():
-            self.solve()
+        self.create_grid()
+
+        # self.start_time = time.time()
+        # self.end_time = 0
+        self.solve()
+        # self.print_runtime()
+
+    # Prints runtime
+    # def print_runtime(self):
+    #     self.end_time = time.time()
+    #     print(self.end_time - self.start_time)
+    #     hours, rem = divmod(self.end_time - self.start_time, 3600)
+    #     minutes, seconds = divmod(rem, 60)
+    #     print("{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
 
     # Reads file
     def read_file(self):
         with open(self.file, 'r') as f:
             self.maze = [line.strip() for line in f]
-        self.x_len = len(self.maze[0])
-        self.y_len = len(self.maze)
+        self.width = len(self.maze[0])
+        self.height = len(self.maze)
         print(self.maze)
 
-    # Gets start and goal points, saves to class data
-    def find_endpoints(self):
-        for row in range(0, self.y_len):
-            for col in range(0, self.x_len):
-                if self.maze[row][col].lower() == 's':
-                    self.start = self.check_cell(col, row)
-                elif self.maze[row][col].lower() == 'g':
-                    self.goal = self.check_cell(col, row)
-
-        # Check for success
-        try:
-            if self.start.value.lower() == 's':
-                if self.goal.value.lower() == 'g':
-                    return True
-        except KeyError:
-            print('Start location not found')
-            return False
+    # Creates grid based on text file
+    def create_grid(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.maze[y][x].lower() == 'x':
+                    reachable = False
+                else:
+                    reachable = True
+                self.cells.append(Cell(x, y, reachable))
+                if self.maze[y][x].lower() == 's':
+                    self.start = self.check_cell(x, y)
+                if self.maze[y][x].lower() == 'g':
+                    self.goal = self.check_cell(x, y)
 
     # Does not account for obstacles
     def calculate_heuristics(self, cell):
@@ -72,27 +83,32 @@ class PathFinder:
 
     # Generates a cell class object based on x, y
     def check_cell(self, x, y):
-        return Cell(x, y, self.maze[y][x])
+        return self.cells[x * self.height + y]
 
     # Generates adjacent cells
     def get_adjacent_cells(self, cell):
         cells = []
-        if cell.x < self.x_len-1:
+        if cell.x < self.width-1:
             cells.append(self.check_cell(cell.x+1, cell.y))
-        if cell.x < 0:
+        if cell.x > 0:
             cells.append(self.check_cell(cell.x-1, cell.y))
         if cell.y > 0:
             cells.append(self.check_cell(cell.x, cell.y-1))
-        if cell.y < self.y_len-1:
+        if cell.y < self.height-1:
             cells.append(self.check_cell(cell.x, cell.y+1))
         return cells
 
     # Get the calculated path
     def display_path(self):
         cell = self.goal
-        while cell.parent is not self.start:
+        path = [(cell.x, cell.y)]
+        while cell.previous is not self.start:
             cell = cell.previous
-            print('Cell Path: x:{0}, y:{1}'.format(cell.x, cell.y))
+            path.append((cell.x, cell.y))
+        path.append((self.start.x, self.start.y))
+        path.reverse()
+        print(path)
+        return path
 
     # Updates the next cells information
     def next_cell(self, current, next_cell):
@@ -111,13 +127,14 @@ class PathFinder:
                 break
             next_cells = self.get_adjacent_cells(cell)
             for next_cell in next_cells:
-                if next_cell.value == '_' and next_cell not in self.visited:
+                if next_cell.accessible and next_cell not in self.visited:
                     if (next_cell.f, next_cell) in self.pending:
                         if next_cell.g > cell.g + 10:
                             self.next_cell(cell, next_cell)
                     else:
                         self.next_cell(cell, next_cell)
                         heapq.heappush(self.pending, (next_cell.f, next_cell))
+
 
 # Runs the class based on txt file
 PathFinder('maze.txt')
