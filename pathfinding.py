@@ -34,6 +34,7 @@ class PathFinder:
         self.start = None
         self.goal = None
 
+        self.solved_maze = []
         self.maze = []
         self.cells = []
 
@@ -61,7 +62,7 @@ class PathFinder:
             self.maze = [line.strip() for line in f]
         self.width = len(self.maze[0])
         self.height = len(self.maze)
-        print(self.maze)
+        # print(self.maze)
 
     # Creates grid based on text file
     def create_grid(self):
@@ -98,18 +99,6 @@ class PathFinder:
             cells.append(self.check_cell(cell.x, cell.y+1))
         return cells
 
-    # Get the calculated path
-    def display_path(self):
-        cell = self.goal
-        path = [(cell.x, cell.y)]
-        while cell.previous is not self.start:
-            cell = cell.previous
-            path.append((cell.x, cell.y))
-        path.append((self.start.x, self.start.y))
-        path.reverse()
-        print(path)
-        return path
-
     # Updates the next cells information
     def next_cell(self, current, next_cell):
         next_cell.g = current.g + 10
@@ -135,6 +124,38 @@ class PathFinder:
                         self.next_cell(cell, next_cell)
                         heapq.heappush(self.pending, (next_cell.f, next_cell))
 
+    # Get the calculated path
+    def display_path(self):
+        cell = self.goal
+        path = [(cell.x, cell.y)]
+        while cell.previous is not self.start:
+            cell = cell.previous
+            path.append((cell.x, cell.y))
+        path.append((self.start.x, self.start.y))
+        path.reverse()
+        # print(path)
+        self.create_solution(path)
+        return path
+
+    # Create output file
+    def create_solution(self, path):
+        # Remove the start and end point from the path (preserves S and G when replacing)
+        trim_result = path[1:len(path)-1]
+        for y in range(self.height):
+            new_line = ''
+            for x in range(self.width):
+                if (x, y) in trim_result:
+                    new_line += 'P'
+                else:
+                    new_line += self.maze[y][x][0]
+            self.solved_maze.append(new_line)
+        # print(self.solved_maze)
+        output = open('pathfinding_a_out.txt', 'w')
+        for line in self.solved_maze:
+            output.write(line)
+            output.write('\n')
+        return self.solved_maze
+
 
 # Runs the class based on txt file
-PathFinder('maze.txt')
+PathFinder('pathfinding_a.txt')
