@@ -1,0 +1,1 @@
+Graph: 1 Score: 4 Leaf Nodes Examined: 6

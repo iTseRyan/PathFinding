@@ -1,7 +1,16 @@
 import math
 
+"""
+As long as the input file is named properly inside the
+read_files function the program will work.
+"""
+
 
 class Node(object):
+    """
+    Class object for nodes in the tree
+    """
+
     def __init__(self, name):
         self.name = name
         self.children = []
@@ -13,26 +22,34 @@ class Node(object):
 leaf_nodes = 0
 
 
-def minimax(node, depth, isMaximizingPlayer, alpha, beta):
-    if node.name.isdigit():
+def minimax(node, isMaximizingPlayer, alpha, beta):
+    """
+    minimax is a recursive function that uses the current node
+    to search children nodes until a leaf is found. The function
+    keeps track of the alpha and beta variables as it traverses 
+    through the tree. When a leaf node is found the leaf_nodes
+    variable is updated to keep track of the number of leafs
+    examined.
+    """
+    if node.name.isdigit():  # leaf nodes contain numbers not letters
         global leaf_nodes
         leaf_nodes += 1
         return int(node.name)
 
-    if isMaximizingPlayer:
+    if isMaximizingPlayer:  # max node
         bestVal = -math.inf
         for child in node.children:
-            value = minimax(child, depth+1, False, alpha, beta)
+            value = minimax(child, False, alpha, beta)
             bestVal = max(bestVal, value)
             alpha = max(alpha, bestVal)
             if beta <= alpha:
                 break
         return bestVal
 
-    else:
+    else:  # min node
         bestVal = math.inf
         for child in node.children:
-            value = minimax(child, depth+1, True, alpha, beta)
+            value = minimax(child, True, alpha, beta)
             bestVal = min(bestVal, value)
             beta = min(beta, bestVal)
             if beta <= alpha:
@@ -40,14 +57,12 @@ def minimax(node, depth, isMaximizingPlayer, alpha, beta):
         return bestVal
 
 
-"""
-This helper function searches the children of the current node
-until a matching parent node is found and the  new child node
-can be created and added to the parent. The tree is returned.
-"""
-
-
 def add_node(parent_name, child_name, node):
+    """
+    This helper function searches the children of the current node
+    until a matching parent node is found and the  new child node
+    can be created and added to the parent. The tree is returned.
+    """
     if node.name == parent_name:
         return node.add(Node(child_name))
     else:
@@ -56,14 +71,14 @@ def add_node(parent_name, child_name, node):
 
 
 def read_file(file):
+    results = []
     with open(file, 'r') as f:
-        results = []
         graph = 1
         for line in f:
             global leaf_nodes
             leaf_nodes = 0
             """
-            First we start by evaluating if the root node will be maximizing 
+            First we start by evaluating if the root node will be maximizing
             or minimizing. If the string is equal to MAX then the variable
             maximize is set to 0. Otherwise it's set to 1.
             """
@@ -74,11 +89,11 @@ def read_file(file):
             starter = str(starter[3]+starter[4]+starter[5])
             maximize = -1
             if starter == "MAX":
-                maximize = 0
+                maximize = True
             else:
-                maximize = 1
+                maximize = False
             """
-            Then the edges are retrieved and looped through the pairs. 
+            Then the edges are retrieved and looped through the pairs.
             """
             edges = line[line.find(" "):]
             edges = edges.replace('{', '')
@@ -92,7 +107,7 @@ def read_file(file):
 
             # calling the minimax function. Returns the optimal value and the number of leafs
             # examined.
-            score = minimax(tree, maximize, True, -math.inf, math.inf)
+            score = minimax(tree, maximize, -math.inf, math.inf)
             leafs = leaf_nodes
             results.append({'graph': str(graph), 'score': str(
                 score), 'leafs_examined': str(leafs)})
@@ -104,8 +119,8 @@ def read_file(file):
 def write_file(results):
     with open("alphabeta_out.txt", 'w') as f:
         for line in results:
-            f.write("Graph", line.graph, "Score", line.score,
-                    "Leaf Nodes Examined", line.leafs_examined)
+            f.write("Graph: " + line['graph'] + " Score: " + line['score'] +
+                    " Leaf Nodes Examined: " + line['leafs_examined'] + "\n")
 
 
 read_file("./alphabeta.txt")
