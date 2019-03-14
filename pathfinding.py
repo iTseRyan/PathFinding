@@ -1,5 +1,5 @@
 import heapq
-# import time
+import math
 
 # Cell Class (points on grid)
 class Cell:
@@ -82,6 +82,10 @@ class PathFinder:
         return abs(cell.x - self.goal.x) + abs(cell.y - self.goal.y)
 
     # Calculate heuristics
+    def calculate_heuristics_euclidean(self, cell):
+        return math.sqrt(pow(cell.x-self.goal.x, 2) + pow(cell.y - self.goal.y, 2))
+
+    # Calculate heuristics
     def calculate_heuristics_chebyshev(self, cell):
         return max(abs(cell.x - self.goal.x), abs(cell.y - self.goal.y))
 
@@ -106,6 +110,7 @@ class PathFinder:
             cells.append(self.check_cell(cell.x, cell.y-1))
         if space_available_up:
             cells.append(self.check_cell(cell.x, cell.y+1))
+
         if diagonal:
             if space_available_up and space_available_right:
                 cells.append(self.check_cell(cell.x+1, cell.y+1))
@@ -115,12 +120,13 @@ class PathFinder:
                 cells.append(self.check_cell(cell.x-1, cell.y+1))
             if space_available_down and space_available_left:
                 cells.append(self.check_cell(cell.x-1, cell.y-1))
+
         return cells
 
     # Updates the next cells information
-    def next_cell(self, current, next_cell, greedy, diagonal):
+    def update_cell_information(self, current_cell, next_cell, greedy, diagonal):
         if greedy:
-            next_cell.g = current.g + (14 if diagonal else 10)
+            next_cell.g = current_cell.g + (14 if diagonal else 10)
         else:
             next_cell.g = 0
 
@@ -129,7 +135,7 @@ class PathFinder:
         else:
             next_cell.h = self.calculate_heuristics_manhattan(next_cell)
 
-        next_cell.previous = current
+        next_cell.previous = current_cell
         next_cell.f = next_cell.g + next_cell.h
 
     # Resets the cell values to run the pathfinding again
@@ -144,10 +150,12 @@ class PathFinder:
         pending = []
         heapq.heapify(pending)
         visited = set()
+        # Add start node to the heap
         heapq.heappush(pending, (self.start.f, self.start))
 
         # While there are open nodes pending, continue searching
         while len(pending):
+            # Remove start node from the heap and add it to visited
             f, cell = heapq.heappop(pending)
             visited.add(cell)
 
@@ -162,9 +170,9 @@ class PathFinder:
                     if (next_cell.f, next_cell) in pending:
                         if not greedy:
                             if next_cell.g > cell.g + 10:
-                                self.next_cell(cell, next_cell, greedy, diagonal)
+                                self.update_cell_information(cell, next_cell, greedy, diagonal)
                     else:
-                        self.next_cell(cell, next_cell, greedy, diagonal)
+                        self.update_cell_information(cell, next_cell, greedy, diagonal)
                         heapq.heappush(pending, (next_cell.f, next_cell))
 
     # Get the calculated path
@@ -184,10 +192,8 @@ class PathFinder:
         # Remove the start and end point from the path (preserves S and G when replacing)
         solved_maze = []
         trim_result = path[1:len(path)-1]
-        if greedy:
-            title = 'Greedy: '+str(moves)+' movements'
-        else:
-            title = 'A*: '+str(moves)+' movements'
+        title = ('Greedy: ' if greedy else 'A*')+str(moves)+' movements'
+
         for y in range(self.height):
             new_line = ''
             for x in range(self.width):
@@ -196,21 +202,17 @@ class PathFinder:
                 else:
                     new_line += self.maze[y][x][0]
             solved_maze.append(new_line)
-        if diagonal:
-            if greedy:
-                output = open('pathfinding_b_out.txt', 'w')
-            else:
-                output = open('pathfinding_b_out.txt', 'a')
-        else:
-            if greedy:
-                output = open('pathfinding_a_out.txt', 'w')
-            else:
-                output = open('pathfinding_a_out.txt', 'a')
+
+        output = open(('pathfinding_b_out.txt' if diagonal else 'pathfinding_a_out.txt'),
+                      ('w' if greedy else 'a'))
+
         output.write(title)
         output.write('\n')
+
         for line in solved_maze:
             output.write(line)
             output.write('\n')
+
         output.close()
         return solved_maze
 
