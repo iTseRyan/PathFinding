@@ -1,7 +1,6 @@
 import heapq
 # import time
 
-
 # Cell Class (points on grid)
 class Cell:
     def __init__(self, x, y, accessible):
@@ -27,14 +26,9 @@ class PathFinder:
         self.width = 0
         self.height = 0
 
-        self.pending = []
-        heapq.heapify(self.pending)
-        self.visited = set()
-
         self.start = None
         self.goal = None
 
-        self.solved_maze = []
         self.maze = []
         self.cells = []
 
@@ -43,18 +37,14 @@ class PathFinder:
         self.read_file()
         self.create_grid()
 
-        # self.start_time = time.time()
-        # self.end_time = 0
-        self.solve()
-        # self.print_runtime()
-
-    # Prints runtime
-    # def print_runtime(self):
-    #     self.end_time = time.time()
-    #     print(self.end_time - self.start_time)
-    #     hours, rem = divmod(self.end_time - self.start_time, 3600)
-    #     minutes, seconds = divmod(rem, 60)
-    #     print("{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+        # Solve(Greedy: Boolean, Diagonal Travel: Boolean)
+        self.solve(True, False)
+        self.reset_cells()
+        self.solve(False, False)
+        self.reset_cells()
+        self.solve(True, True)
+        self.reset_cells()
+        self.solve(False, True)
 
     # Reads file
     def read_file(self):
@@ -62,7 +52,6 @@ class PathFinder:
             self.maze = [line.strip() for line in f]
         self.width = len(self.maze[0])
         self.height = len(self.maze)
-        # print(self.maze)
 
     # Creates grid based on text file
     def create_grid(self):
@@ -79,53 +68,92 @@ class PathFinder:
                     self.goal = self.check_cell(x, y)
 
     # Does not account for obstacles
-    def calculate_heuristics(self, cell):
+    def calculate_heuristics_manhattan(self, cell):
         return abs(cell.x - self.goal.x) + abs(cell.y - self.goal.y)
+
+    # Distances for diagonals
+    def calculate_heuristics_chebyshev(self, cell):
+        return max(abs(cell.x - self.goal.x), abs(cell.y - self.goal.y))
 
     # Generates a cell class object based on x, y
     def check_cell(self, x, y):
         return self.cells[x * self.height + y]
 
     # Generates adjacent cells
-    def get_adjacent_cells(self, cell):
+    def get_adjacent_cells(self, cell, diagonal):
         cells = []
-        if cell.x < self.width-1:
+
+        space_available_right = cell.x < self.width-1
+        space_available_left = cell.x > 0
+        space_available_down = cell.y > 0
+        space_available_up = cell.y < self.height-1
+
+        if space_available_right:
             cells.append(self.check_cell(cell.x+1, cell.y))
-        if cell.x > 0:
+        if space_available_left:
             cells.append(self.check_cell(cell.x-1, cell.y))
-        if cell.y > 0:
+        if space_available_down:
             cells.append(self.check_cell(cell.x, cell.y-1))
-        if cell.y < self.height-1:
+        if space_available_up:
             cells.append(self.check_cell(cell.x, cell.y+1))
+        if diagonal:
+            if space_available_up and space_available_right:
+                cells.append(self.check_cell(cell.x+1, cell.y+1))
+            if space_available_down and space_available_right:
+                cells.append(self.check_cell(cell.x+1, cell.y-1))
+            if space_available_up and space_available_left:
+                cells.append(self.check_cell(cell.x-1, cell.y+1))
+            if space_available_down and space_available_left:
+                cells.append(self.check_cell(cell.x-1, cell.y-1))
         return cells
 
     # Updates the next cells information
-    def next_cell(self, current, next_cell):
-        next_cell.g = current.g + 10
-        next_cell.h = self.calculate_heuristics(next_cell)
+    def next_cell(self, current, next_cell, greedy, diagonal):
+        if greedy:
+            next_cell.g = current.g + (14 if diagonal else 10)
+        else:
+            next_cell.g = 0
+        if diagonal:
+            next_cell.h = self.calculate_heuristics_chebyshev(next_cell)
+        else:
+            next_cell.h = self.calculate_heuristics_manhattan(next_cell)
         next_cell.previous = current
         next_cell.f = next_cell.g + next_cell.h
 
-    def solve(self):
-        heapq.heappush(self.pending, (self.start.f, self.start))
-        while len(self.pending):
-            f, cell = heapq.heappop(self.pending)
-            self.visited.add(cell)
+    def reset_cells(self):
+        for cell in self.cells:
+            cell.g = 0
+            cell.f = 0
+            cell.h = 0
+            cell.previous = None
+
+    def solve(self, greedy, diagonal):
+        counter = 0
+        pending = []
+        heapq.heapify(pending)
+        visited = set()
+        heapq.heappush(pending, (self.start.f, self.start))
+        while len(pending):
+            f, cell = heapq.heappop(pending)
+            visited.add(cell)
             if cell is self.goal:
-                self.display_path()
+                self.generate_path(greedy, diagonal)
                 break
-            next_cells = self.get_adjacent_cells(cell)
+            next_cells = self.get_adjacent_cells(cell, diagonal)
+            if counter == 0:
+                counter += 1
             for next_cell in next_cells:
-                if next_cell.accessible and next_cell not in self.visited:
-                    if (next_cell.f, next_cell) in self.pending:
-                        if next_cell.g > cell.g + 10:
-                            self.next_cell(cell, next_cell)
+                if next_cell.accessible and next_cell not in visited:
+                    if (next_cell.f, next_cell) in pending:
+                        if not greedy:
+                            if next_cell.g > cell.g + 10:
+                                self.next_cell(cell, next_cell, greedy, diagonal)
                     else:
-                        self.next_cell(cell, next_cell)
-                        heapq.heappush(self.pending, (next_cell.f, next_cell))
+                        self.next_cell(cell, next_cell, greedy, diagonal)
+                        heapq.heappush(pending, (next_cell.f, next_cell))
 
     # Get the calculated path
-    def display_path(self):
+    def generate_path(self, greedy, diagonal):
         cell = self.goal
         path = [(cell.x, cell.y)]
         while cell.previous is not self.start:
@@ -133,14 +161,18 @@ class PathFinder:
             path.append((cell.x, cell.y))
         path.append((self.start.x, self.start.y))
         path.reverse()
-        # print(path)
-        self.create_solution(path)
+        self.create_solution(path, greedy, diagonal, len(path))
         return path
 
     # Create output file
-    def create_solution(self, path):
+    def create_solution(self, path, greedy, diagonal, moves):
         # Remove the start and end point from the path (preserves S and G when replacing)
+        solved_maze = []
         trim_result = path[1:len(path)-1]
+        if greedy:
+            title = 'Greedy: '+str(moves)+' movements'
+        else:
+            title = 'A*: '+str(moves)+' movements'
         for y in range(self.height):
             new_line = ''
             for x in range(self.width):
@@ -148,13 +180,24 @@ class PathFinder:
                     new_line += 'P'
                 else:
                     new_line += self.maze[y][x][0]
-            self.solved_maze.append(new_line)
-        # print(self.solved_maze)
-        output = open('pathfinding_a_out.txt', 'w')
-        for line in self.solved_maze:
+            solved_maze.append(new_line)
+        if diagonal:
+            if greedy:
+                output = open('pathfinding_b_out.txt', 'w')
+            else:
+                output = open('pathfinding_b_out.txt', 'a')
+        else:
+            if greedy:
+                output = open('pathfinding_a_out.txt', 'w')
+            else:
+                output = open('pathfinding_a_out.txt', 'a')
+        output.write(title)
+        output.write('\n')
+        for line in solved_maze:
             output.write(line)
             output.write('\n')
-        return self.solved_maze
+        output.close()
+        return solved_maze
 
 
 # Runs the class based on txt file
