@@ -22,28 +22,38 @@ class Cell:
 
 # Main class for solving maze
 class PathFinder:
+    # Initialize variables and execute functions
     def __init__(self, file):
+        # Width and height of maze
         self.width = 0
         self.height = 0
 
+        # Start and end nodes/cell
         self.start = None
         self.goal = None
 
+        # The generated cells of the maze and the maze generated from the txt
         self.maze = []
         self.cells = []
 
+        # File name
         self.file = file
 
+        # Read txt file and generate grid
         self.read_file()
         self.create_grid()
 
         # Solve(Greedy: Boolean, Diagonal Travel: Boolean)
+        # Greedy Non Diagonal
         self.solve(True, False)
         self.reset_cells()
+        # A* Non Diagonal
         self.solve(False, False)
         self.reset_cells()
+        # Greedy Diagonal
         self.solve(True, True)
         self.reset_cells()
+        # A* Diagonal
         self.solve(False, True)
 
     # Reads file
@@ -67,11 +77,11 @@ class PathFinder:
                 if self.maze[y][x].lower() == 'g':
                     self.goal = self.check_cell(x, y)
 
-    # Does not account for obstacles
+    # Calculate heuristics
     def calculate_heuristics_manhattan(self, cell):
         return abs(cell.x - self.goal.x) + abs(cell.y - self.goal.y)
 
-    # Distances for diagonals
+    # Calculate heuristics
     def calculate_heuristics_chebyshev(self, cell):
         return max(abs(cell.x - self.goal.x), abs(cell.y - self.goal.y))
 
@@ -113,13 +123,16 @@ class PathFinder:
             next_cell.g = current.g + (14 if diagonal else 10)
         else:
             next_cell.g = 0
+
         if diagonal:
             next_cell.h = self.calculate_heuristics_chebyshev(next_cell)
         else:
             next_cell.h = self.calculate_heuristics_manhattan(next_cell)
+
         next_cell.previous = current
         next_cell.f = next_cell.g + next_cell.h
 
+    # Resets the cell values to run the pathfinding again
     def reset_cells(self):
         for cell in self.cells:
             cell.g = 0
@@ -128,20 +141,22 @@ class PathFinder:
             cell.previous = None
 
     def solve(self, greedy, diagonal):
-        counter = 0
         pending = []
         heapq.heapify(pending)
         visited = set()
         heapq.heappush(pending, (self.start.f, self.start))
+
+        # While there are open nodes pending, continue searching
         while len(pending):
             f, cell = heapq.heappop(pending)
             visited.add(cell)
+
+            # If the current cell is the goal, end the while loop
             if cell is self.goal:
                 self.generate_path(greedy, diagonal)
                 break
+
             next_cells = self.get_adjacent_cells(cell, diagonal)
-            if counter == 0:
-                counter += 1
             for next_cell in next_cells:
                 if next_cell.accessible and next_cell not in visited:
                     if (next_cell.f, next_cell) in pending:
