@@ -1,117 +1,111 @@
-import re
+import math
 
 
 class Node(object):
-    def __init__(self, Name):
-        self.Name = Name
-        self.parent = None
+    def __init__(self, name):
+        self.name = name
         self.children = []
 
     def add(self, child):
         self.children.append(child)
-        child.parent = self
+
+
+leaf_nodes = 0
+
+
+def minimax(node, depth, isMaximizingPlayer, alpha, beta):
+    if node.name.isdigit():
+        global leaf_nodes
+        leaf_nodes += 1
+        return int(node.name)
+
+    if isMaximizingPlayer:
+        bestVal = -math.inf
+        for child in node.children:
+            value = minimax(child, depth+1, False, alpha, beta)
+            bestVal = max(bestVal, value)
+            alpha = max(alpha, bestVal)
+            if beta <= alpha:
+                break
+        return bestVal
+
+    else:
+        bestVal = math.inf
+        for child in node.children:
+            value = minimax(child, depth+1, True, alpha, beta)
+            bestVal = min(bestVal, value)
+            beta = min(beta, bestVal)
+            if beta <= alpha:
+                break
+        return bestVal
+
+
+"""
+This helper function searches the children of the current node
+until a matching parent node is found and the  new child node
+can be created and added to the parent. The tree is returned.
+"""
+
+
+def add_node(parent_name, child_name, node):
+    if node.name == parent_name:
+        return node.add(Node(child_name))
+    else:
+        for child in node.children:
+            add_node(parent_name, child_name, child)
 
 
 def read_file(file):
     with open(file, 'r') as f:
+        results = []
+        graph = 1
         for line in f:
-            result = line[line.find(" "):]
-            result = result.replace('{', '')
-            result = result.replace('}', '')
-            result = result.replace(' ', '')
-            current_node = Node(result[1])
-            for i in range(len(result)-1, 0, -6):
-                print("1_node: "+str(result[i-3])+" 2_node: "+str(result[i-1]))
-                # next_node = Node(result[i+3])
-                # if result[i+1] == current_node.Name:
-                #     current_node.add(next_node)
-                # else:
-                #     current_node = find_parent(next_node.Name, current_node)
+            global leaf_nodes
+            leaf_nodes = 0
+            """
+            First we start by evaluating if the root node will be maximizing 
+            or minimizing. If the string is equal to MAX then the variable
+            maximize is set to 0. Otherwise it's set to 1.
+            """
+            starter = line[:line.find(" ")]
+            starter = starter.replace('{', '')
+            stater = starter.replace('}', '')
+            starter = starter.replace(' ', '')
+            starter = str(starter[3]+starter[4]+starter[5])
+            maximize = -1
+            if starter == "MAX":
+                maximize = 0
+            else:
+                maximize = 1
+            """
+            Then the edges are retrieved and looped through the pairs. 
+            """
+            edges = line[line.find(" "):]
+            edges = edges.replace('{', '')
+            edges = edges.replace('}', '')
+            edges = edges.replace(' ', '')
+            # the root node is set as the first letter in the edges
+            tree = Node(edges[1])
+            # looping through the edges
+            for i in range(0, len(edges), 6):
+                add_node(edges[i+1], edges[i+3], tree)  # user helper function
+
+            # calling the minimax function. Returns the optimal value and the number of leafs
+            # examined.
+            score = minimax(tree, maximize, True, -math.inf, math.inf)
+            leafs = leaf_nodes
+            results.append({'graph': str(graph), 'score': str(
+                score), 'leafs_examined': str(leafs)})
+
+            graph += 1
+    write_file(results)
 
 
-# def find_node(name, node):
-    # if node.Name == name:
-    #     return node
-    # else:
-    #     if node.parent not None:
-    #         return find_parent(name, node.parent)
+def write_file(results):
+    with open("alphabeta_out.txt", 'w') as f:
+        for line in results:
+            f.write("Graph", line.graph, "Score", line.score,
+                    "Leaf Nodes Examined", line.leafs_examined)
 
 
 read_file("./alphabeta.txt")
-
-
-# class AlphaBeta:
-#     # print utility value of root node (assuming it is max)
-#     # print names of all nodes visited during search
-#     def __init__(self, file):
-#         with open(file, 'r') as f:
-#             self.game_tree = [line.strip() for line in f]
-#         self.game_tree = game_tree  # GameTree
-#         self.root = game_tree.root  # GameNode
-#         return
-
-#     def alpha_beta_search(self, node):
-#         infinity = float('inf')
-#         best_val = -infinity
-#         beta = infinity
-
-#         successors = self.getSuccessors(node)
-#         best_state = None
-#         for state in successors:
-#             value = self.min_value(state, best_val, beta)
-#             if value > best_val:
-#                 best_val = value
-#                 best_state = state
-#         print "AlphaBeta:  Utility Value of Root Node: = " + str(best_val)
-#         print "AlphaBeta:  Best State is: " + best_state.Name
-#         return best_state
-
-#     def max_value(self, node, alpha, beta):
-#         print "AlphaBeta-->MAX: Visited Node :: " + node.Name
-#         if self.isTerminal(node):
-#             return self.getUtility(node)
-#         infinity = float('inf')
-#         value = -infinity
-
-#         successors = self.getSuccessors(node)
-#         for state in successors:
-#             value = max(value, self.min_value(state, alpha, beta))
-#             if value >= beta:
-#                 return value
-#             alpha = max(alpha, value)
-#         return value
-
-#     def min_value(self, node, alpha, beta):
-#         print "AlphaBeta-->MIN: Visited Node :: " + node.Name
-#         if self.isTerminal(node):
-#             return self.getUtility(node)
-#         infinity = float('inf')
-#         value = infinity
-
-#         successors = self.getSuccessors(node)
-#         for state in successors:
-#             value = min(value, self.max_value(state, alpha, beta))
-#             if value <= alpha:
-#                 return value
-#             beta = min(beta, value)
-
-#         return value
-
-#     #                     #
-#     #   UTILITY METHODS   #
-#     #                     #
-
-#     # successor states in a game tree are the child nodes...
-#     def getSuccessors(self, node):
-#         assert node is not None
-#         return node.children
-
-#     # return true if the node has NO children (successor states)
-#     # return false if the node has children (successor states)
-#     def isTerminal(self, node):
-#         assert node is not None
-#         return len(node.children) == 0
-
-#     def getUtility(self, node):
-#         assert node is not None
-#         return node.value
