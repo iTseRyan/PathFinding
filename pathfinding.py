@@ -126,14 +126,14 @@ class PathFinder:
     # Updates the next cells information
     def update_cell_information(self, current_cell, next_cell, greedy, diagonal):
         if greedy:
-            next_cell.g = current_cell.g + (14 if diagonal else 10)
-        else:
             next_cell.g = 0
+        else:
+            next_cell.g = current_cell.g + (14 if diagonal else 10)
 
         if diagonal:
             next_cell.h = self.calculate_heuristics_chebyshev(next_cell)
         else:
-            next_cell.h = self.calculate_heuristics_manhattan(next_cell)
+            next_cell.h = self.calculate_heuristics_euclidean(next_cell)
 
         next_cell.previous = current_cell
         next_cell.f = next_cell.g + next_cell.h
@@ -169,7 +169,7 @@ class PathFinder:
                 if next_cell.accessible and next_cell not in visited:
                     if (next_cell.f, next_cell) in pending:
                         if not greedy:
-                            if next_cell.g > cell.g + 10:
+                            if next_cell.g > cell.g + (14 if diagonal else 10):
                                 self.update_cell_information(cell, next_cell, greedy, diagonal)
                     else:
                         self.update_cell_information(cell, next_cell, greedy, diagonal)
